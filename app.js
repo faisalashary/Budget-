@@ -1,3 +1,9 @@
+window.addEventListener("DOMContentLoaded", () => {
+
+/* ===========================
+   MODELS
+   =========================== */
+
 class Category {
   constructor(name, budget) {
     this.id = crypto.randomUUID();
@@ -13,6 +19,10 @@ class Expense {
     this.categoryId = categoryId;
   }
 }
+
+/* ===========================
+   MAIN APP
+   =========================== */
 
 class BudgetApp {
   constructor() {
@@ -41,7 +51,6 @@ class BudgetApp {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   }
 
-  /* ⭐ Correct helper: always get the REAL previous month */
   getMonthBefore(monthKey) {
     const [year, month] = monthKey.split("-").map(Number);
     const date = new Date(year, month - 2);
@@ -83,8 +92,6 @@ class BudgetApp {
 
       this.currentMonth = newMonth;
       this.loadMonth();
-
-      /* ⭐ ALWAYS apply rollover based on calendar order */
       this.applyRollover(prev, newMonth);
 
       this.recalculateCategorySpending();
@@ -128,7 +135,10 @@ class BudgetApp {
     });
   }
 
-  /* ⭐ APPLY ROLLOVER (positive OR negative) */
+  /* ===========================
+     ROLLOVER
+     =========================== */
+
   applyRollover(prevMonth, newMonth) {
     const prev = this.data[prevMonth];
     const next = this.data[newMonth];
@@ -141,13 +151,11 @@ class BudgetApp {
 
     const carryover = totalIncome - (totalExpenses + totalSavings);
 
-    /* ⭐ Allow negative carryover */
     next.rolloverAmount = carryover;
 
     this.updateCarryoverIncome();
   }
 
-  /* ⭐ Add/remove rollover income based on toggle */
   updateCarryoverIncome() {
     const data = this.monthData;
 
@@ -163,7 +171,10 @@ class BudgetApp {
     }
   }
 
-  /* ---------- CATEGORY SPENDING ---------- */
+  /* ===========================
+     CATEGORY SPENDING
+     =========================== */
+
   recalculateCategorySpending() {
     const data = this.monthData;
 
@@ -175,7 +186,10 @@ class BudgetApp {
     });
   }
 
-  /* ---------- INCOME ---------- */
+  /* ===========================
+     INCOME
+     =========================== */
+
   addIncome() {
     const name = document.getElementById("incomeName").value.trim();
     const amount = Number(document.getElementById("incomeAmount").value);
@@ -212,7 +226,10 @@ class BudgetApp {
     return this.monthData.income.reduce((sum, i) => sum + i.amount, 0);
   }
 
-  /* ---------- SAVINGS ---------- */
+  /* ===========================
+     SAVINGS
+     =========================== */
+
   addSavings() {
     const name = document.getElementById("savingsName").value.trim();
     const amount = Number(document.getElementById("savingsAmount").value);
@@ -242,7 +259,10 @@ class BudgetApp {
     return this.monthData.savings.reduce((sum, s) => sum + s.amount, 0);
   }
 
-  /* ---------- CATEGORIES ---------- */
+  /* ===========================
+     CATEGORIES
+     =========================== */
+
   addCategory() {
     const name = document.getElementById("catName").value.trim();
     const budgetInput = document.getElementById("catBudget").value;
@@ -282,7 +302,10 @@ class BudgetApp {
     this.save();
   }
 
-  /* ---------- EXPENSES ---------- */
+  /* ===========================
+     EXPENSES
+     =========================== */
+
   addExpense() {
     const amount = Number(document.getElementById("expAmount").value);
     const categoryId = document.getElementById("expCategory").value;
@@ -305,7 +328,47 @@ class BudgetApp {
     return this.monthData.expenses.reduce((sum, e) => sum + e.amount, 0);
   }
 
-  /* ---------- RENDER ---------- */
+  editExpense(index) {
+    const exp = this.monthData.expenses[index];
+    if (!exp) return;
+
+    const newAmount = prompt("Edit expense amount:", exp.amount);
+    if (newAmount === null) return;
+
+    const amountNum = Number(newAmount);
+    if (isNaN(amountNum) || amountNum <= 0) return;
+
+    const cat = this.monthData.categories.find(c => c.id === exp.categoryId);
+    if (cat) {
+      cat.spent -= exp.amount;
+      cat.spent += amountNum;
+    }
+
+    exp.amount = amountNum;
+
+    this.render();
+    this.save();
+  }
+
+  deleteExpense(index) {
+    const exp = this.monthData.expenses[index];
+    if (!exp) return;
+
+    const cat = this.monthData.categories.find(c => c.id === exp.categoryId);
+    if (cat) {
+      cat.spent -= exp.amount;
+    }
+
+    this.monthData.expenses.splice(index, 1);
+
+    this.render();
+    this.save();
+  }
+
+  /* ===========================
+     RENDER UI
+     =========================== */
+
   render() {
     const data = this.monthData;
 
@@ -331,7 +394,7 @@ class BudgetApp {
       li.className = "item";
       li.innerHTML = `
         <strong>${entry.name}</strong><br>
-        Amount: <span style="color:${entry.amount < 0 ? 'red' : 'inherit'}">${entry.amount}</span>
+        Amount: ${entry.amount}
         ${entry.locked ? "" : `<div class="delete-btn">Delete</div>`}
       `;
       if (!entry.locked) {
@@ -374,12 +437,36 @@ class BudgetApp {
         <br>
         <div class="edit-btn">Edit</div>
         <div class="delete-btn">Delete</div>
+
+        <h4 style="margin-top:12px;">Expenses:</h4>
+        <ul id="cat-exp-${cat.id}"></ul>
       `;
 
       li.querySelector(".edit-btn").addEventListener("click", () => this.editCategory(cat));
       li.querySelector(".delete-btn").addEventListener("click", () => this.deleteCategory(cat.id));
 
       list.appendChild(li);
+
+      /* RENDER EXPENSES INSIDE CATEGORY */
+      const expUl = document.getElementById(`cat-exp-${cat.id}`);
+      data.expenses
+        .filter(e => e.categoryId === cat.id)
+        .forEach((exp, index) => {
+          const expLi = document.createElement("li");
+          expLi.className = "item";
+          expLi.style.borderLeft = "4px solid #ff9f0a";
+
+          expLi.innerHTML = `
+            Amount: ${exp.amount}
+            <div class="edit-btn">Edit</div>
+            <div class="delete-btn">Delete</div>
+          `;
+
+          expLi.querySelector(".edit-btn").addEventListener("click", () => this.editExpense(index));
+          expLi.querySelector(".delete-btn").addEventListener("click", () => this.deleteExpense(index));
+
+          expUl.appendChild(expLi);
+        });
     });
 
     /* EXPENSE CATEGORY DROPDOWN */
@@ -402,3 +489,5 @@ class BudgetApp {
 }
 
 new BudgetApp();
+
+});
