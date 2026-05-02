@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Budget App</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <h1>Budget</h1>
+
+  <!-- MONTH SELECTOR -->
+  <div class="card">
+    <h2>Month</h2>
+    <select id="monthSelector"></select>
+  </div>
+
+  <!-- CARRYOVER CARD -->
+  <div class="card" id="carryoverCard" style="display:none;">
+    <h2>Carryover</h2>
+    <p>Rollover from previous month: <span id="carryoverAmount">0</span></p>
+
+    <label style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+      <input type="checkbox" id="toggleCarryover">
+      Include this rollover as income
+    </label>
+  </div>
+
+  <!-- INCOME -->
+  <div class="card">
+    <h2>Income</h2>
+    <input id="incomeName" placeholder="Income source (e.g., Salary)">
+    <input id="incomeAmount" type="number" placeholder="Amount">
+    <button class="btn" id="addIncomeBtn">Add Income</button>
+    <ul id="incomeList"></ul>
+    <p>Total Income: <span id="incomeDisplay">0</span></p>
+  </div>
+
+  <!-- SAVINGS -->
+  <div class="card">
+    <h2>Savings</h2>
+    <input id="savingsName" placeholder="Savings type (e.g., Emergency Fund)">
+    <input id="savingsAmount" type="number" placeholder="Amount">
+    <button class="btn" id="addSavingsBtn">Add Savings</button>
+    <ul id="savingsList"></ul>
+    <p>Total Savings: <span id="savingsDisplay">0</span></p>
+  </div>
+
+  <!-- CATEGORIES -->
+  <div class="card">
+    <h2>Categories</h2>
+    <input id="catName" placeholder="Category name">
+    <input id="catBudget" type="number" placeholder="Budget (optional)">
+    <button class="btn" id="addCategoryBtn">Add Category</button>
+    <ul id="categoryList"></ul>
+  </div>
+
+  <!-- EXPENSES -->
+  <div class="card">
+    <h2>Add Expense</h2>
+    <input id="expAmount" type="number" placeholder="Amount">
+    <select id="expCategory"></select>
+    <button class="btn" id="addExpenseBtn">Add Expense</button>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="card summary">
+    <h2>Summary</h2>
+    <p>Total Expenses: <span id="totalExpenses">0</span></p>
+    <p>Available After Savings: <span id="availableAfterSavings">0</span></p>
+    <p>Carryover: <span id="carryover">0</span></p>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
