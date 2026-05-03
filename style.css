@@ -16,13 +16,7 @@ h1 {
   font-size: 36px;
   font-weight: 700;
   margin-bottom: 30px;
-  letter-spacing: -0.5px;
-}
-
-h2 {
-  margin-top: 0;
-  font-size: 22px;
-  font-weight: 600;
+  color: #ffffff;
 }
 
 .card {
@@ -32,7 +26,6 @@ h2 {
   margin-bottom: 24px;
   border-radius: 20px;
   border: 1px solid rgba(255,255,255,0.12);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.25);
 }
 
 input, select {
@@ -43,7 +36,6 @@ input, select {
   border: 1px solid #3a3a3c;
   background: #1c1c1e;
   color: #f5f5f7;
-  font-size: 16px;
 }
 
 .btn {
@@ -56,11 +48,6 @@ input, select {
   font-size: 17px;
   font-weight: 600;
   cursor: pointer;
-  transition: 0.2s;
-}
-
-.btn:hover {
-  background: #006fe0;
 }
 
 .item {
@@ -83,14 +70,29 @@ input, select {
 
 .delete-btn {
   background: #ff453a;
+  color: white;
 }
 
 .edit-btn {
   background: #ff9f0a;
+  color: black;
   margin-right: 8px;
 }
 
-.summary span {
-  font-weight: bold;
-  color: #0a84ff;
+.btn.show-toggle {
+  margin-top: 10px;
+  background: #3a3a3c;
+  color: #f5f5f7;
+}
+
+small {
+  opacity: 0.8;
+  font-size: 13px;
+}
+
+em {
+  opacity: 0.9;
+  font-size: 14px;
+  display: block;
+  margin-top: 4px;
 }
