@@ -1,13 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Budget App</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
+<h1>Budget</h1>
+
 <div class="container">
-  <h1>Budget</h1>
 
   <!-- MONTH SELECTOR -->
   <div class="card">
@@ -15,7 +8,7 @@
     <select id="monthSelector"></select>
   </div>
 
-  <!-- CARRYOVER CARD -->
+  <!-- CARRYOVER -->
   <div class="card" id="carryoverCard" style="display:none;">
     <h2>Carryover</h2>
     <p>Rollover from previous month: <span id="carryoverAmount">0</span></p>
@@ -59,6 +52,7 @@
   <div class="card">
     <h2>Add Expense</h2>
     <input id="expAmount" type="number" placeholder="Amount">
+    <input id="expDetail" placeholder="Details (optional)">
     <select id="expCategory"></select>
     <button class="btn" id="addExpenseBtn">Add Expense</button>
   </div>
@@ -70,8 +64,5 @@
     <p>Available After Savings: <span id="availableAfterSavings">0</span></p>
     <p>Carryover: <span id="carryover">0</span></p>
   </div>
-</div>
 
-<script src="app.js"></script>
-</body>
-</html>
+</div>
