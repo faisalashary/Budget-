@@ -1,5 +1,3 @@
-window.addEventListener("DOMContentLoaded", () => {
-
 class Category {
   constructor(name, budget) {
     this.id = crypto.randomUUID();
@@ -357,7 +355,7 @@ class BudgetApp {
         expUl.appendChild(li);
       };
 
-      catExp.slice(0, 3).forEach((exp, idx) => renderExpense(exp, d.expenses.indexOf(exp)));
+      catExp.slice(0, 3).forEach((exp) => renderExpense(exp, d.expenses.indexOf(exp)));
 
       if (catExp.length > 3) {
         const btn = document.createElement("button");
@@ -426,6 +424,6 @@ class BudgetApp {
   }
 }
 
-new BudgetApp();
-
+document.addEventListener("DOMContentLoaded", () => {
+  new BudgetApp();
 });
