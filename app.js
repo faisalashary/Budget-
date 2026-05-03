@@ -1,9 +1,5 @@
 window.addEventListener("DOMContentLoaded", () => {
 
-/* ===========================
-   MODELS
-   =========================== */
-
 class Category {
   constructor(name, budget) {
     this.id = crypto.randomUUID();
@@ -14,15 +10,13 @@ class Category {
 }
 
 class Expense {
-  constructor(amount, categoryId) {
+  constructor(amount, categoryId, detail) {
     this.amount = amount;
     this.categoryId = categoryId;
+    this.detail = detail || "";
+    this.date = new Date().toISOString().split("T")[0];
   }
 }
-
-/* ===========================
-   MAIN APP
-   =========================== */
 
 class BudgetApp {
   constructor() {
@@ -37,63 +31,54 @@ class BudgetApp {
     this.render();
   }
 
-  save() {
-    localStorage.setItem("budgetData", JSON.stringify(this.data));
-  }
-
-  load() {
-    const saved = localStorage.getItem("budgetData");
-    if (saved) this.data = JSON.parse(saved);
-  }
+  save() { localStorage.setItem("budgetData", JSON.stringify(this.data)); }
+  load() { const s = localStorage.getItem("budgetData"); if (s) this.data = JSON.parse(s); }
 
   getCurrentMonth() {
     const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
   }
 
-  getMonthBefore(monthKey) {
-    const [year, month] = monthKey.split("-").map(Number);
-    const date = new Date(year, month - 2);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  getMonthBefore(m) {
+    const [y, mo] = m.split("-").map(Number);
+    const d = new Date(y, mo - 2);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
   }
 
   initMonths() {
-    const selector = document.getElementById("monthSelector");
-    selector.innerHTML = "";
-
+    const sel = document.getElementById("monthSelector");
+    sel.innerHTML = "";
     const months = [];
 
     for (let i = 12; i > 0; i--) {
-      const date = new Date();
-      date.setMonth(date.getMonth() - i);
-      months.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`);
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
     }
 
     months.push(this.currentMonth);
 
     for (let i = 1; i <= 6; i++) {
-      const date = new Date();
-      date.setMonth(date.getMonth() + i);
-      months.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`);
+      const d = new Date();
+      d.setMonth(d.getMonth() + i);
+      months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
     }
 
     months.forEach(m => {
-      const option = document.createElement("option");
-      option.value = m;
-      option.textContent = m;
-      selector.appendChild(option);
+      const o = document.createElement("option");
+      o.value = m;
+      o.textContent = m;
+      sel.appendChild(o);
     });
 
-    selector.value = this.currentMonth;
+    sel.value = this.currentMonth;
 
-    selector.addEventListener("change", () => {
-      const newMonth = selector.value;
-      const prev = this.getMonthBefore(newMonth);
-
-      this.currentMonth = newMonth;
+    sel.addEventListener("change", () => {
+      const newM = sel.value;
+      const prev = this.getMonthBefore(newM);
+      this.currentMonth = newM;
       this.loadMonth();
-      this.applyRollover(prev, newMonth);
-
+      this.applyRollover(prev, newM);
       this.recalculateCategorySpending();
       this.render();
       this.save();
@@ -110,16 +95,10 @@ class BudgetApp {
         includeCarryover: true,
         rolloverAmount: 0
       };
-    } else {
-      const m = this.data[this.currentMonth];
-      if (m.includeCarryover === undefined) m.includeCarryover = true;
-      if (m.rolloverAmount === undefined) m.rolloverAmount = 0;
     }
   }
 
-  get monthData() {
-    return this.data[this.currentMonth];
-  }
+  get monthData() { return this.data[this.currentMonth]; }
 
   bindEvents() {
     document.getElementById("addIncomeBtn").addEventListener("click", () => this.addIncome());
@@ -135,309 +114,222 @@ class BudgetApp {
     });
   }
 
-  /* ===========================
-     ROLLOVER
-     =========================== */
+  applyRollover(prev, newM) {
+    const p = this.data[prev], n = this.data[newM];
+    if (!p || !n) return;
 
-  applyRollover(prevMonth, newMonth) {
-    const prev = this.data[prevMonth];
-    const next = this.data[newMonth];
+    const inc = p.income.reduce((s, i) => s + i.amount, 0);
+    const sav = p.savings.reduce((s, i) => s + i.amount, 0);
+    const exp = p.expenses.reduce((s, e) => s + e.amount, 0);
 
-    if (!prev || !next) return;
-
-    const totalIncome = prev.income.reduce((s, i) => s + i.amount, 0);
-    const totalSavings = prev.savings.reduce((s, i) => s + i.amount, 0);
-    const totalExpenses = prev.expenses.reduce((s, e) => s + e.amount, 0);
-
-    const carryover = totalIncome - (totalExpenses + totalSavings);
-
-    next.rolloverAmount = carryover;
-
+    n.rolloverAmount = inc - (exp + sav);
     this.updateCarryoverIncome();
   }
 
   updateCarryoverIncome() {
-    const data = this.monthData;
+    const d = this.monthData;
+    d.income = d.income.filter(i => !i.locked);
 
-    data.income = data.income.filter(i => !i.locked);
-
-    if (data.includeCarryover && data.rolloverAmount !== 0) {
-      data.income.push({
+    if (d.includeCarryover && d.rolloverAmount !== 0) {
+      d.income.push({
         id: "ROLLOVER-" + this.currentMonth,
         name: "Rollover",
-        amount: data.rolloverAmount,
+        amount: d.rolloverAmount,
         locked: true
       });
     }
   }
 
-  /* ===========================
-     CATEGORY SPENDING
-     =========================== */
-
   recalculateCategorySpending() {
-    const data = this.monthData;
-
-    data.categories.forEach(cat => cat.spent = 0);
-
-    data.expenses.forEach(exp => {
-      const cat = data.categories.find(c => c.id === exp.categoryId);
-      if (cat) cat.spent += exp.amount;
+    const d = this.monthData;
+    d.categories.forEach(c => c.spent = 0);
+    d.expenses.forEach(e => {
+      const c = d.categories.find(x => x.id === e.categoryId);
+      if (c) c.spent += e.amount;
     });
   }
-
-  /* ===========================
-     INCOME
-     =========================== */
 
   addIncome() {
     const name = document.getElementById("incomeName").value.trim();
-    const amount = Number(document.getElementById("incomeAmount").value);
+    const amt = Number(document.getElementById("incomeAmount").value);
+    if (!name || amt === 0) return;
 
-    if (!name || amount === 0) return;
-
-    this.monthData.income.push({
-      id: crypto.randomUUID(),
-      name,
-      amount
-    });
-
+    this.monthData.income.push({ id: crypto.randomUUID(), name, amount: amt });
     document.getElementById("incomeName").value = "";
     document.getElementById("incomeAmount").value = "";
-
-    this.render();
-    this.save();
+    this.render(); this.save();
   }
 
   deleteIncome(id) {
-    const entry = this.monthData.income.find(i => i.id === id);
-
-    if (entry?.locked) {
-      alert("Rollover income cannot be deleted. Toggle it off instead.");
-      return;
-    }
-
     this.monthData.income = this.monthData.income.filter(i => i.id !== id);
-    this.render();
-    this.save();
+    this.render(); this.save();
   }
 
   getTotalIncome() {
-    return this.monthData.income.reduce((sum, i) => sum + i.amount, 0);
+    return this.monthData.income.reduce((s, i) => s + i.amount, 0);
   }
-
-  /* ===========================
-     SAVINGS
-     =========================== */
 
   addSavings() {
     const name = document.getElementById("savingsName").value.trim();
-    const amount = Number(document.getElementById("savingsAmount").value);
+    const amt = Number(document.getElementById("savingsAmount").value);
+    if (!name || amt <= 0) return;
 
-    if (!name || amount <= 0) return;
-
-    this.monthData.savings.push({
-      id: crypto.randomUUID(),
-      name,
-      amount
-    });
-
+    this.monthData.savings.push({ id: crypto.randomUUID(), name, amount: amt });
     document.getElementById("savingsName").value = "";
     document.getElementById("savingsAmount").value = "";
-
-    this.render();
-    this.save();
+    this.render(); this.save();
   }
 
   deleteSavings(id) {
     this.monthData.savings = this.monthData.savings.filter(s => s.id !== id);
-    this.render();
-    this.save();
+    this.render(); this.save();
   }
 
   getTotalSavings() {
-    return this.monthData.savings.reduce((sum, s) => sum + s.amount, 0);
+    return this.monthData.savings.reduce((s, i) => s + i.amount, 0);
   }
-
-  /* ===========================
-     CATEGORIES
-     =========================== */
 
   addCategory() {
     const name = document.getElementById("catName").value.trim();
-    const budgetInput = document.getElementById("catBudget").value;
-    const budget = budgetInput === "" ? null : Number(budgetInput);
-
+    const b = document.getElementById("catBudget").value;
+    const budget = b === "" ? null : Number(b);
     if (!name) return;
 
     this.monthData.categories.push(new Category(name, budget));
-
     document.getElementById("catName").value = "";
     document.getElementById("catBudget").value = "";
-
-    this.render();
-    this.save();
+    this.render(); this.save();
   }
 
   editCategory(cat) {
-    const newName = prompt("Edit category name:", cat.name);
-    const newBudgetInput = prompt("Edit category budget (leave blank for none):", cat.budget ?? "");
-
-    if (newName) cat.name = newName;
-
-    if (newBudgetInput === "") {
-      cat.budget = null;
-    } else if (!isNaN(Number(newBudgetInput))) {
-      cat.budget = Number(newBudgetInput);
-    }
-
-    this.render();
-    this.save();
+    const n = prompt("Edit name:", cat.name);
+    const b = prompt("Edit budget:", cat.budget ?? "");
+    if (n) cat.name = n;
+    if (b === "") cat.budget = null;
+    else if (!isNaN(Number(b))) cat.budget = Number(b);
+    this.render(); this.save();
   }
 
   deleteCategory(id) {
     this.monthData.categories = this.monthData.categories.filter(c => c.id !== id);
     this.monthData.expenses = this.monthData.expenses.filter(e => e.categoryId !== id);
-    this.render();
-    this.save();
+    this.render(); this.save();
   }
 
-  /* ===========================
-     EXPENSES
-     =========================== */
-
   addExpense() {
-    const amount = Number(document.getElementById("expAmount").value);
-    const categoryId = document.getElementById("expCategory").value;
+    const amt = Number(document.getElementById("expAmount").value);
+    const catId = document.getElementById("expCategory").value;
+    const detail = document.getElementById("expDetail").value.trim();
 
-    if (amount <= 0) return;
+    if (amt <= 0) return;
 
-    const cat = this.monthData.categories.find(c => c.id === categoryId);
+    const cat = this.monthData.categories.find(c => c.id === catId);
     if (cat) {
-      cat.spent += amount;
-      this.monthData.expenses.push(new Expense(amount, categoryId));
+      cat.spent += amt;
+      this.monthData.expenses.push(new Expense(amt, catId, detail));
     }
 
     document.getElementById("expAmount").value = "";
-
-    this.render();
-    this.save();
+    document.getElementById("expDetail").value = "";
+    this.render(); this.save();
   }
 
-  getTotalExpenses() {
-    return this.monthData.expenses.reduce((sum, e) => sum + e.amount, 0);
-  }
-
-  editExpense(index) {
-    const exp = this.monthData.expenses[index];
+  editExpense(i) {
+    const exp = this.monthData.expenses[i];
     if (!exp) return;
 
-    const newAmount = prompt("Edit expense amount:", exp.amount);
-    if (newAmount === null) return;
+    const a = prompt("Edit amount:", exp.amount);
+    if (a === null) return;
+    const n = Number(a);
+    if (isNaN(n) || n <= 0) return;
 
-    const amountNum = Number(newAmount);
-    if (isNaN(amountNum) || amountNum <= 0) return;
+    const d = prompt("Edit date:", exp.date);
+    if (d) exp.date = d;
+
+    const newDetail = prompt("Edit detail:", exp.detail);
+    if (newDetail !== null) exp.detail = newDetail;
 
     const cat = this.monthData.categories.find(c => c.id === exp.categoryId);
-    if (cat) {
-      cat.spent -= exp.amount;
-      cat.spent += amountNum;
-    }
+    if (cat) { cat.spent -= exp.amount; cat.spent += n; }
 
-    exp.amount = amountNum;
-
-    this.render();
-    this.save();
+    exp.amount = n;
+    this.render(); this.save();
   }
 
-  deleteExpense(index) {
-    const exp = this.monthData.expenses[index];
+  deleteExpense(i) {
+    const exp = this.monthData.expenses[i];
     if (!exp) return;
 
     const cat = this.monthData.categories.find(c => c.id === exp.categoryId);
-    if (cat) {
-      cat.spent -= exp.amount;
-    }
+    if (cat) cat.spent -= exp.amount;
 
-    this.monthData.expenses.splice(index, 1);
-
-    this.render();
-    this.save();
+    this.monthData.expenses.splice(i, 1);
+    this.render(); this.save();
   }
-
-  /* ===========================
-     RENDER UI
-     =========================== */
 
   render() {
-    const data = this.monthData;
+    const d = this.monthData;
 
-    /* CARRYOVER CARD */
-    const carryoverCard = document.getElementById("carryoverCard");
-    const carryoverAmount = document.getElementById("carryoverAmount");
-    const toggleCarryover = document.getElementById("toggleCarryover");
+    // CARRYOVER
+    const c = document.getElementById("carryoverCard");
+    const ca = document.getElementById("carryoverAmount");
+    const t = document.getElementById("toggleCarryover");
 
-    if (data.rolloverAmount !== 0) {
-      carryoverCard.style.display = "block";
-      carryoverAmount.textContent = data.rolloverAmount;
-      carryoverAmount.style.color = data.rolloverAmount < 0 ? "red" : "#0a84ff";
-      toggleCarryover.checked = data.includeCarryover;
-    } else {
-      carryoverCard.style.display = "none";
-    }
+    if (d.rolloverAmount !== 0) {
+      c.style.display = "block";
+      ca.textContent = d.rolloverAmount;
+      t.checked = d.includeCarryover;
+    } else c.style.display = "none";
 
-    /* INCOME */
-    const incomeList = document.getElementById("incomeList");
-    incomeList.innerHTML = "";
-    data.income.forEach(entry => {
+    // INCOME
+    const il = document.getElementById("incomeList");
+    il.innerHTML = "";
+    d.income.forEach(e => {
       const li = document.createElement("li");
       li.className = "item";
       li.innerHTML = `
-        <strong>${entry.name}</strong><br>
-        Amount: ${entry.amount}
-        ${entry.locked ? "" : `<div class="delete-btn">Delete</div>`}
+        <strong>${e.name}</strong><br>
+        Amount: ${e.amount}
+        ${e.locked ? "" : `<div class="delete-btn">Delete</div>`}
       `;
-      if (!entry.locked) {
-        li.querySelector(".delete-btn").addEventListener("click", () => this.deleteIncome(entry.id));
-      }
-      incomeList.appendChild(li);
+      if (!e.locked) li.querySelector(".delete-btn").addEventListener("click", () => this.deleteIncome(e.id));
+      il.appendChild(li);
     });
     document.getElementById("incomeDisplay").textContent = this.getTotalIncome();
 
-    /* SAVINGS */
-    const savingsList = document.getElementById("savingsList");
-    savingsList.innerHTML = "";
-    data.savings.forEach(entry => {
+    // SAVINGS
+    const sl = document.getElementById("savingsList");
+    sl.innerHTML = "";
+    d.savings.forEach(e => {
       const li = document.createElement("li");
       li.className = "item";
       li.innerHTML = `
-        <strong>${entry.name}</strong><br>
-        Amount: ${entry.amount}
+        <strong>${e.name}</strong><br>
+        Amount: ${e.amount}
         <div class="delete-btn">Delete</div>
       `;
-      li.querySelector(".delete-btn").addEventListener("click", () => this.deleteSavings(entry.id));
-      savingsList.appendChild(li);
+      li.querySelector(".delete-btn").addEventListener("click", () => this.deleteSavings(e.id));
+      sl.appendChild(li);
     });
     document.getElementById("savingsDisplay").textContent = this.getTotalSavings();
 
-    /* CATEGORIES */
-    const list = document.getElementById("categoryList");
-    list.innerHTML = "";
-    data.categories.forEach(cat => {
-      const remaining = cat.budget !== null ? cat.budget - cat.spent : null;
+    // CATEGORIES
+    const cl = document.getElementById("categoryList");
+    cl.innerHTML = "";
+
+    const renderCategory = (cat) => {
+      const rem = cat.budget !== null ? cat.budget - cat.spent : null;
 
       const li = document.createElement("li");
       li.className = "item";
-
       li.innerHTML = `
         <strong>${cat.name}</strong><br>
-        ${cat.budget !== null ? `Budget: ${cat.budget}` : `No budget set`}
+        ${cat.budget !== null ? `Budget: ${cat.budget}` : `No budget`}
         | Spent: ${cat.spent}
-        ${remaining !== null ? `| Remaining: <span style="color:${remaining < 0 ? 'red' : 'green'}">${remaining}</span>` : ""}
+        ${rem !== null ? `| Remaining: <span style="color:${rem < 0 ? "red" : "green"}">${rem}</span>` : ""}
         <br>
         <div class="edit-btn">Edit</div>
         <div class="delete-btn">Delete</div>
-
         <h4 style="margin-top:12px;">Expenses:</h4>
         <ul id="cat-exp-${cat.id}"></ul>
       `;
@@ -445,46 +337,92 @@ class BudgetApp {
       li.querySelector(".edit-btn").addEventListener("click", () => this.editCategory(cat));
       li.querySelector(".delete-btn").addEventListener("click", () => this.deleteCategory(cat.id));
 
-      list.appendChild(li);
+      cl.appendChild(li);
 
-      /* RENDER EXPENSES INSIDE CATEGORY */
       const expUl = document.getElementById(`cat-exp-${cat.id}`);
-      data.expenses
-        .filter(e => e.categoryId === cat.id)
-        .forEach((exp, index) => {
-          const expLi = document.createElement("li");
-          expLi.className = "item";
-          expLi.style.borderLeft = "4px solid #ff9f0a";
+      const catExp = d.expenses.filter(e => e.categoryId === cat.id);
 
-          expLi.innerHTML = `
-            Amount: ${exp.amount}
-            <div class="edit-btn">Edit</div>
-            <div class="delete-btn">Delete</div>
-          `;
+      const renderExpense = (exp, idx) => {
+        const li = document.createElement("li");
+        li.className = "item";
+        li.style.borderLeft = "4px solid #ff9f0a";
+        li.innerHTML = `
+          Amount: ${exp.amount} — <small>${exp.date}</small><br>
+          ${exp.detail ? `<em>${exp.detail}</em>` : ""}
+          <div class="edit-btn">Edit</div>
+          <div class="delete-btn">Delete</div>
+        `;
+        li.querySelector(".edit-btn").addEventListener("click", () => this.editExpense(idx));
+        li.querySelector(".delete-btn").addEventListener("click", () => this.deleteExpense(idx));
+        expUl.appendChild(li);
+      };
 
-          expLi.querySelector(".edit-btn").addEventListener("click", () => this.editExpense(index));
-          expLi.querySelector(".delete-btn").addEventListener("click", () => this.deleteExpense(index));
+      catExp.slice(0, 3).forEach((exp, idx) => renderExpense(exp, d.expenses.indexOf(exp)));
 
-          expUl.appendChild(expLi);
+      if (catExp.length > 3) {
+        const btn = document.createElement("button");
+        btn.className = "btn show-toggle";
+        let open = false;
+
+        const update = () => btn.textContent = open
+          ? "Hide extra expenses"
+          : `Show ${catExp.length - 3} more`;
+
+        update();
+
+        btn.addEventListener("click", () => {
+          open = !open;
+          expUl.innerHTML = "";
+          const items = open ? catExp : catExp.slice(0, 3);
+          items.forEach(exp => renderExpense(exp, d.expenses.indexOf(exp)));
+          update();
+          expUl.appendChild(btn);
         });
+
+        expUl.appendChild(btn);
+      }
+    };
+
+    d.categories.slice(0, 5).forEach(cat => renderCategory(cat));
+
+    if (d.categories.length > 5) {
+      const btn = document.createElement("button");
+      btn.className = "btn show-toggle";
+      let open = false;
+
+      const update = () => btn.textContent = open
+        ? "Hide extra categories"
+        : `Show ${d.categories.length - 5} more categories`;
+
+      update();
+
+      btn.addEventListener("click", () => {
+        open = !open;
+        cl.innerHTML = "";
+        const items = open ? d.categories : d.categories.slice(0, 5);
+        items.forEach(cat => renderCategory(cat));
+        update();
+        cl.appendChild(btn);
+      });
+
+      cl.appendChild(btn);
+    }
+
+    const dd = document.getElementById("expCategory");
+    dd.innerHTML = "";
+    d.categories.forEach(cat => {
+      const o = document.createElement("option");
+      o.value = cat.id;
+      o.textContent = cat.name;
+      dd.appendChild(o);
     });
 
-    /* EXPENSE CATEGORY DROPDOWN */
-    const dropdown = document.getElementById("expCategory");
-    dropdown.innerHTML = "";
-    data.categories.forEach(cat => {
-      const option = document.createElement("option");
-      option.value = cat.id;
-      option.textContent = cat.name;
-      dropdown.appendChild(option);
-    });
-
-    /* SUMMARY */
-    document.getElementById("totalExpenses").textContent = this.getTotalExpenses();
+    const totalExp = d.expenses.reduce((s, e) => s + e.amount, 0);
+    document.getElementById("totalExpenses").textContent = totalExp;
     document.getElementById("availableAfterSavings").textContent =
       this.getTotalIncome() - this.getTotalSavings();
     document.getElementById("carryover").textContent =
-      this.getTotalIncome() - (this.getTotalExpenses() + this.getTotalSavings());
+      this.getTotalIncome() - (this.getTotalSavings() + totalExp);
   }
 }
 
